@@ -12,7 +12,8 @@ export const metadata: Metadata = {
   title: 'realfamousbae focus — countdowns that matter',
   description: 'Живые таймеры до важных событий. Синхронизация через ChatGPT.',
   icons: {
-    icon: [{ url: '/brand-mark.png', type: 'image/png' }],
+    icon: [{ url: '/icon.png', type: 'image/png', sizes: '512x512' }],
+    shortcut: [{ url: '/icon.png', type: 'image/png' }],
     apple: [{ url: '/apple-touch-icon.png', type: 'image/png' }],
   },
   openGraph: {

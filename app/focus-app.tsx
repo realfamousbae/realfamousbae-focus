@@ -19,6 +19,8 @@ const copy = {
     dashboardEyebrow: '// ваш личный временной контур', dashboardTitle: 'Ваши события', dashboardCopy: 'Все важные моменты — в одном месте и на каждом устройстве.',
     newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
+    viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл', adaptiveOn: 'умный масштаб: вкл', adaptiveOff: 'умный масштаб: выкл',
+    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
     days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд', finished: 'СОБЫТИЕ НАСТУПИЛО',
@@ -40,6 +42,8 @@ const copy = {
     dashboardEyebrow: '// your personal time horizon', dashboardTitle: 'Your events', dashboardCopy: 'Every important moment, in one place and on every device.',
     newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
+    viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off', adaptiveOn: 'smart scale: on', adaptiveOff: 'smart scale: off',
+    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
     days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds', finished: 'THE MOMENT HAS ARRIVED',
@@ -279,8 +283,61 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
   loading: boolean; loadError: boolean; onCreate: () => void; onEdit: (timer: Timer) => void; onDelete: (timer: Timer) => void;
   onImport: (files: File[]) => Promise<void>; importing: boolean;
 }) {
+  const dashboardRef = useRef<HTMLDivElement>(null);
+  const activeSectionRef = useRef<HTMLElement>(null);
+  const [showConnections, setShowConnections] = useState(false);
+  const [adaptiveScale, setAdaptiveScale] = useState(true);
+  const [tileScale, setTileScale] = useState(1);
+  const [scrollScale, setScrollScale] = useState(1);
+  const [preferencesReady, setPreferencesReady] = useState(false);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem('focus-dashboard-view');
+    const id = window.setTimeout(() => {
+      if (saved) try {
+        const value = JSON.parse(saved) as { connections?: boolean; adaptive?: boolean; tileScale?: number };
+        setShowConnections(Boolean(value.connections));
+        setAdaptiveScale(value.adaptive !== false);
+        if (typeof value.tileScale === 'number' && [0.58, 0.78, 1, 1.25].includes(value.tileScale)) setTileScale(value.tileScale);
+      } catch { /* Ignore malformed local preferences. */ }
+      setPreferencesReady(true);
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
+    if (!preferencesReady) return;
+    window.localStorage.setItem('focus-dashboard-view', JSON.stringify({ connections: showConnections, adaptive: adaptiveScale, tileScale }));
+  }, [showConnections, adaptiveScale, tileScale, preferencesReady]);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        setShowConnections((visible) => !visible);
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    function updateScale() {
+      if (!adaptiveScale) { setScrollScale(1); return; }
+      const section = activeSectionRef.current;
+      if (!section) return;
+      const progress = Math.min(1, Math.max(0, (window.innerHeight - section.getBoundingClientRect().top) / window.innerHeight));
+      setScrollScale(0.62 + progress * 0.38);
+    }
+    const frame = window.requestAnimationFrame(updateScale);
+    window.addEventListener('scroll', updateScale, { passive: true });
+    window.addEventListener('resize', updateScale);
+    return () => { window.cancelAnimationFrame(frame); window.removeEventListener('scroll', updateScale); window.removeEventListener('resize', updateScale); };
+  }, [adaptiveScale]);
+
+  const effectiveScale = tileScale * scrollScale;
   return (
-    <div className="dashboard" id="top">
+    <div className={`dashboard ${showConnections ? 'show-connections' : ''}`} id="top" ref={dashboardRef} style={{ '--tile-scale': effectiveScale } as CSSProperties}>
       <section className="dashboard-intro">
         <div>
           <p className="eyebrow">{t.dashboardEyebrow}</p>
@@ -292,26 +349,84 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
 
       {loading ? <StatePanel label={t.loading} pulse /> : loadError ? <StatePanel label={t.error} /> : (
         <>
-          <TimerSection title={t.active} hint={t.activeHint} count={active.length}>
-            {active.length ? active.map((timer, index) => (
-              <TimerCard key={timer.id} timer={timer} now={now} language={language} featured={index === 0} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />
-            )) : (
-              <div className="empty-state">
-                <span aria-hidden="true">⌁</span><h3>{t.emptyTitle}</h3><p>{t.emptyCopy}</p>
-                <button className="outline-button" type="button" onClick={onCreate}>{t.emptyAction}</button>
-              </div>
-            )}
-          </TimerSection>
+          <DashboardControls t={t} showConnections={showConnections} adaptiveScale={adaptiveScale} tileScale={tileScale} onConnections={() => setShowConnections((value) => !value)} onAdaptive={() => setAdaptiveScale((value) => !value)} onScale={setTileScale} />
+          {active.length > 0 && <CalendarTimeline t={t} timers={active} />}
+          <div ref={activeSectionRef}><TimerSection title={t.active} hint={t.activeHint} count={active.length}>
+              {active.length ? active.map((timer, index) => (
+                <TimerCard key={timer.id} timer={timer} now={now} language={language} featured={index === 0} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />
+              )) : (
+                <div className="empty-state">
+                  <span aria-hidden="true">⌁</span><h3>{t.emptyTitle}</h3><p>{t.emptyCopy}</p>
+                  <button className="outline-button" type="button" onClick={onCreate}>{t.emptyAction}</button>
+                </div>
+              )}
+            </TimerSection></div>
           {completed.length > 0 && (
             <TimerSection title={t.completed} hint={t.completedHint} count={completed.length} completed>
               {completed.map((timer) => <TimerCard key={timer.id} timer={timer} now={now} language={language} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />)}
             </TimerSection>
           )}
+          {showConnections && active.length > 0 && <ConnectionLayer containerRef={dashboardRef} />}
         </>
       )}
       <footer className="footer-line"><span>realfamousbae focus</span><span>{user.email} · cloud sync on</span></footer>
     </div>
   );
+}
+
+function DashboardControls({ t, showConnections, adaptiveScale, tileScale, onConnections, onAdaptive, onScale }: {
+  t: typeof copy.ru | typeof copy.en; showConnections: boolean; adaptiveScale: boolean; tileScale: number;
+  onConnections: () => void; onAdaptive: () => void; onScale: (scale: number) => void;
+}) {
+  const options = [[0.58, t.sizeSmall], [0.78, t.sizeMedium], [1, t.sizeLarge], [1.25, t.sizeXL]] as const;
+  return <div className="dashboard-controls" aria-label={t.viewLabel}>
+    <span>{t.tileSize}</span>
+    <div className="scale-options" aria-label={t.tileSize}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
+    <button className={`view-toggle ${showConnections ? 'is-active' : ''}`} type="button" onClick={onConnections} aria-pressed={showConnections} title={t.shortcutHint}>{showConnections ? t.connectionsOn : t.connectionsOff}</button>
+    <button className={`view-toggle ${adaptiveScale ? 'is-active' : ''}`} type="button" onClick={onAdaptive} aria-pressed={adaptiveScale}>{adaptiveScale ? t.adaptiveOn : t.adaptiveOff}</button>
+  </div>;
+}
+
+function CalendarTimeline({ t, timers }: { t: typeof copy.ru | typeof copy.en; timers: Timer[] }) {
+  const first = Date.parse(timers[0].targetAt);
+  const last = Date.parse(timers[timers.length - 1].targetAt);
+  const span = Math.max(last - first, 86_400_000);
+  return <section className="calendar-timeline" aria-label={t.overview}>
+    <div className="timeline-heading"><div><p className="eyebrow">00 / calendar</p><h2>{t.overview}</h2></div><span>{t.overviewHint}</span></div>
+    <div className="timeline-track">
+      {timers.map((timer) => {
+        const position = timers.length === 1 ? 50 : 5 + ((Date.parse(timer.targetAt) - first) / span) * 90;
+        const date = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' }).format(new Date(timer.targetAt));
+        return <span key={timer.id} className="timeline-marker" data-timer-marker={timer.id} style={{ left: `${position}%`, '--accent': accentColors[timer.accent] } as CSSProperties} title={`${timer.title} · ${date}`}><i /><b>{date}</b></span>;
+      })}
+    </div>
+  </section>;
+}
+
+function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivElement | null } }) {
+  const [paths, setPaths] = useState<string[]>([]);
+  useEffect(() => {
+    const update = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      const host = container.getBoundingClientRect();
+      const next = Array.from(container.querySelectorAll<HTMLElement>('[data-timer-marker]')).flatMap((marker) => {
+        const card = container.querySelector<HTMLElement>(`[data-timer-card="${marker.dataset.timerMarker}"]`);
+        if (!card) return [];
+        const a = marker.getBoundingClientRect(); const b = card.getBoundingClientRect();
+        const x1 = a.left + a.width / 2 - host.left; const y1 = a.bottom - host.top;
+        const x2 = b.left + Math.min(40, b.width / 2) - host.left; const y2 = b.top + 12 - host.top;
+        const bend = y1 + Math.max(26, (y2 - y1) * .42);
+        return [`M ${x1} ${y1} C ${x1} ${bend}, ${x2} ${bend}, ${x2} ${y2}`];
+      });
+      setPaths(next);
+    };
+    update();
+    const observer = new ResizeObserver(update); if (containerRef.current) observer.observe(containerRef.current);
+    window.addEventListener('resize', update); window.addEventListener('scroll', update, { passive: true });
+    return () => { observer.disconnect(); window.removeEventListener('resize', update); window.removeEventListener('scroll', update); };
+  }, [containerRef]);
+  return <svg className="connection-layer" aria-hidden="true">{paths.map((path, index) => <path key={`${path}-${index}`} d={path} />)}</svg>;
 }
 
 function CalendarDropzone({ t, onCreate, onImport, importing }: {
@@ -368,7 +483,7 @@ function TimerCard({ timer, now, language, featured = false, demo = false, onEdi
   const date = new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(timer.targetAt));
   const style = { '--accent': accentColors[timer.accent] } as CSSProperties;
   return (
-    <article className={`timer-card ${featured ? 'featured' : ''} ${ended ? 'is-completed' : ''}`} style={style}>
+    <article className={`timer-card ${featured ? 'featured' : ''} ${ended ? 'is-completed' : ''}`} data-timer-card={timer.id} style={style}>
       <div className="card-topline">
         <span className="terminal-dots" aria-hidden="true"><i /><i /><i /></span>
         <span>event://{timer.id.slice(0, 8)}</span>
