@@ -8,12 +8,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://realfamousbae-focus.multihead-la-3424.chatgpt.site'),
   title: 'realfamousbae focus — countdowns that matter',
   description: 'Живые таймеры до важных событий. Синхронизация через ChatGPT.',
   openGraph: {
     title: 'realfamousbae focus',
     description: 'Countdowns that matter — beautiful live timers, synced through ChatGPT.',
     type: 'website',
+    url: 'https://realfamousbae-focus.multihead-la-3424.chatgpt.site',
     images: [{ url: '/og.png', width: 1731, height: 909, alt: 'realfamousbae focus — countdowns that matter' }],
   },
   twitter: {
