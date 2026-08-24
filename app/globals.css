@@ -111,7 +111,7 @@ h2 { margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 500; letter-spac
 .timer-list .timer-card .event-meta { padding: clamp(18px, calc(25px * var(--tile-scale)), 27px) clamp(19px, calc(29px * var(--tile-scale)), 29px) clamp(16px, calc(22px * var(--tile-scale)), 22px); }
 .timer-list .timer-card .card-footer { padding: 0 clamp(18px, calc(28px * var(--tile-scale)), 28px); }
 .timer-list .timer-card .countdown-unit { padding: clamp(16px, calc(28px * var(--tile-scale)), 28px) 8px; }
-.timer-list .timer-card .countdown-unit span { font-size: clamp(27px, calc(51px * var(--tile-scale)), 51px); }
+.timer-list .timer-card .countdown-unit span { font-size: clamp(27px, calc(51px * var(--tile-scale)), 51px) !important; }
 .timer-list .timer-card .event-meta h3 { font-size: clamp(20px, calc(36px * var(--tile-scale)), 36px); }
 .timer-card:not(.featured) .countdown-unit { padding: clamp(18px, 3vw, 28px) 12px; }
 .timer-card:not(.featured) .countdown-unit span { font-size: clamp(30px, 5vw, 51px); }

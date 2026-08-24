@@ -19,8 +19,8 @@ const copy = {
     dashboardEyebrow: '// ваш личный временной контур', dashboardTitle: 'Ваши события', dashboardCopy: 'Все важные моменты — в одном месте и на каждом устройстве.',
     newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
-    viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл', adaptiveOn: 'умный масштаб: вкл', adaptiveOff: 'умный масштаб: выкл',
-    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', adaptiveShortcutHint: '⌘/Ctrl + Shift + M — умный масштаб', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл',
+    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', scaleShortcutHint: '⌘/Ctrl + Shift + 1–4 — масштаб', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
     days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд', finished: 'СОБЫТИЕ НАСТУПИЛО',
@@ -42,8 +42,8 @@ const copy = {
     dashboardEyebrow: '// your personal time horizon', dashboardTitle: 'Your events', dashboardCopy: 'Every important moment, in one place and on every device.',
     newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
-    viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off', adaptiveOn: 'smart scale: on', adaptiveOff: 'smart scale: off',
-    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', adaptiveShortcutHint: '⌘/Ctrl + Shift + M — smart scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off',
+    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', scaleShortcutHint: '⌘/Ctrl + Shift + 1–4 — scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
     days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds', finished: 'THE MOMENT HAS ARRIVED',
@@ -284,20 +284,16 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
   onImport: (files: File[]) => Promise<void>; importing: boolean;
 }) {
   const dashboardRef = useRef<HTMLDivElement>(null);
-  const activeSectionRef = useRef<HTMLElement>(null);
   const [showConnections, setShowConnections] = useState(false);
-  const [adaptiveScale, setAdaptiveScale] = useState(true);
   const [tileScale, setTileScale] = useState(1);
-  const [scrollScale, setScrollScale] = useState(1);
   const [preferencesReady, setPreferencesReady] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('focus-dashboard-view');
     const id = window.setTimeout(() => {
       if (saved) try {
-        const value = JSON.parse(saved) as { connections?: boolean; adaptive?: boolean; tileScale?: number };
+        const value = JSON.parse(saved) as { connections?: boolean; tileScale?: number };
         setShowConnections(Boolean(value.connections));
-        setAdaptiveScale(value.adaptive !== false);
         if (typeof value.tileScale === 'number' && [0.58, 0.78, 1, 1.25].includes(value.tileScale)) setTileScale(value.tileScale);
       } catch { /* Ignore malformed local preferences. */ }
       setPreferencesReady(true);
@@ -307,8 +303,8 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
 
   useEffect(() => {
     if (!preferencesReady) return;
-    window.localStorage.setItem('focus-dashboard-view', JSON.stringify({ connections: showConnections, adaptive: adaptiveScale, tileScale }));
-  }, [showConnections, adaptiveScale, tileScale, preferencesReady]);
+    window.localStorage.setItem('focus-dashboard-view', JSON.stringify({ connections: showConnections, tileScale }));
+  }, [showConnections, tileScale, preferencesReady]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -316,32 +312,18 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
         event.preventDefault();
         setShowConnections((visible) => !visible);
       }
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
+      const scaleKey = event.key;
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && ['1', '2', '3', '4'].includes(scaleKey)) {
         event.preventDefault();
-        setAdaptiveScale((enabled) => !enabled);
+        setTileScale([0.58, 0.78, 1, 1.25][Number(scaleKey) - 1]);
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  useEffect(() => {
-    function updateScale() {
-      if (!adaptiveScale) { setScrollScale(1); return; }
-      const section = activeSectionRef.current;
-      if (!section) return;
-      const progress = Math.min(1, Math.max(0, (window.innerHeight - section.getBoundingClientRect().top) / window.innerHeight));
-      setScrollScale(0.62 + progress * 0.38);
-    }
-    const frame = window.requestAnimationFrame(updateScale);
-    window.addEventListener('scroll', updateScale, { passive: true });
-    window.addEventListener('resize', updateScale);
-    return () => { window.cancelAnimationFrame(frame); window.removeEventListener('scroll', updateScale); window.removeEventListener('resize', updateScale); };
-  }, [adaptiveScale]);
-
-  const effectiveScale = tileScale * scrollScale;
   return (
-    <div className={`dashboard ${showConnections ? 'show-connections' : ''}`} id="top" ref={dashboardRef} style={{ '--tile-scale': effectiveScale } as CSSProperties}>
+    <div className={`dashboard ${showConnections ? 'show-connections' : ''}`} id="top" ref={dashboardRef} style={{ '--tile-scale': tileScale } as CSSProperties}>
       <section className="dashboard-intro">
         <div>
           <p className="eyebrow">{t.dashboardEyebrow}</p>
@@ -353,9 +335,9 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
 
       {loading ? <StatePanel label={t.loading} pulse /> : loadError ? <StatePanel label={t.error} /> : (
         <>
-          <DashboardControls t={t} showConnections={showConnections} adaptiveScale={adaptiveScale} tileScale={tileScale} onConnections={() => setShowConnections((value) => !value)} onAdaptive={() => setAdaptiveScale((value) => !value)} onScale={setTileScale} />
+          <DashboardControls t={t} showConnections={showConnections} tileScale={tileScale} onConnections={() => setShowConnections((value) => !value)} onScale={setTileScale} />
           {active.length > 0 && <CalendarTimeline t={t} timers={active} />}
-          <div ref={activeSectionRef}><TimerSection title={t.active} hint={t.activeHint} count={active.length}>
+          <div><TimerSection title={t.active} hint={t.activeHint} count={active.length}>
               {active.length ? active.map((timer, index) => (
                 <TimerCard key={timer.id} timer={timer} now={now} language={language} featured={index === 0} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />
               )) : (
@@ -378,16 +360,15 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
   );
 }
 
-function DashboardControls({ t, showConnections, adaptiveScale, tileScale, onConnections, onAdaptive, onScale }: {
-  t: typeof copy.ru | typeof copy.en; showConnections: boolean; adaptiveScale: boolean; tileScale: number;
-  onConnections: () => void; onAdaptive: () => void; onScale: (scale: number) => void;
+function DashboardControls({ t, showConnections, tileScale, onConnections, onScale }: {
+  t: typeof copy.ru | typeof copy.en; showConnections: boolean; tileScale: number;
+  onConnections: () => void; onScale: (scale: number) => void;
 }) {
   const options = [[0.58, t.sizeSmall], [0.78, t.sizeMedium], [1, t.sizeLarge], [1.25, t.sizeXL]] as const;
   return <div className="dashboard-controls" aria-label={t.viewLabel}>
     <span>{t.tileSize}</span>
-    <div className="scale-options" aria-label={t.tileSize}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
+    <div className="scale-options" aria-label={t.tileSize} title={t.scaleShortcutHint}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
     <button className={`view-toggle ${showConnections ? 'is-active' : ''}`} type="button" onClick={onConnections} aria-pressed={showConnections} title={t.shortcutHint}>{showConnections ? t.connectionsOn : t.connectionsOff}</button>
-    <button className={`view-toggle ${adaptiveScale ? 'is-active' : ''}`} type="button" onClick={onAdaptive} aria-pressed={adaptiveScale} title={t.adaptiveShortcutHint}>{adaptiveScale ? t.adaptiveOn : t.adaptiveOff}</button>
   </div>;
 }
 
