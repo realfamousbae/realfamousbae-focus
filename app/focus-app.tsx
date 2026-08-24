@@ -20,7 +20,7 @@ const copy = {
     newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
     viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл',
-    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', scaleShortcutHint: 'Выберите масштаб карточек', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', scaleShortcutHint: 'Выберите масштаб карточек', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
     days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд', finished: 'СОБЫТИЕ НАСТУПИЛО',
@@ -43,7 +43,7 @@ const copy = {
     newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
     viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off',
-    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', scaleShortcutHint: 'Choose a card scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', scaleShortcutHint: 'Choose a card scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
     days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds', finished: 'THE MOMENT HAS ARRIVED',
@@ -61,7 +61,7 @@ const accentColors: Record<Accent, string> = {
   green: '#75fb91', cyan: '#67e8f9', violet: '#c4a7ff', amber: '#f3bd72', coral: '#ff857a',
 };
 
-const TILE_SCALES = [0.58, 0.78, 1, 1.25] as const;
+const TILE_SCALES = [0.58, 0.78, 1.25] as const;
 
 function getScaleMetrics(scale: number) {
   const digitSize = Math.min(51, Math.max(27, Math.round(51 * scale)));
@@ -298,7 +298,7 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
 }) {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const [showConnections, setShowConnections] = useState(false);
-  const [tileScale, setTileScale] = useState(1);
+  const [tileScale, setTileScale] = useState<number>(TILE_SCALES[1]);
   const [preferencesReady, setPreferencesReady] = useState(false);
 
   useEffect(() => {
@@ -307,7 +307,8 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
       if (saved) try {
         const value = JSON.parse(saved) as { connections?: boolean; tileScale?: number };
         setShowConnections(Boolean(value.connections));
-        if (typeof value.tileScale === 'number' && [0.58, 0.78, 1, 1.25].includes(value.tileScale)) setTileScale(value.tileScale);
+        if (value.tileScale === 1) setTileScale(TILE_SCALES[1]);
+        else if (typeof value.tileScale === 'number' && TILE_SCALES.some((scale) => scale === value.tileScale)) setTileScale(value.tileScale);
       } catch { /* Ignore malformed local preferences. */ }
       setPreferencesReady(true);
     }, 0);
@@ -385,7 +386,7 @@ function DashboardControls({ t, showConnections, tileScale, onConnections, onSca
   t: typeof copy.ru | typeof copy.en; showConnections: boolean; tileScale: number;
   onConnections: () => void; onScale: (scale: number) => void;
 }) {
-  const options = [[TILE_SCALES[0], t.sizeSmall], [TILE_SCALES[1], t.sizeMedium], [TILE_SCALES[2], t.sizeLarge], [TILE_SCALES[3], t.sizeXL]] as const;
+  const options = [[TILE_SCALES[0], t.sizeSmall], [TILE_SCALES[1], t.sizeMedium], [TILE_SCALES[2], t.sizeLarge]] as const;
   return <div className="dashboard-controls" aria-label={t.viewLabel}>
     <span>{t.tileSize}</span>
     <div className="scale-options" aria-label={t.tileSize} title={t.scaleShortcutHint}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
