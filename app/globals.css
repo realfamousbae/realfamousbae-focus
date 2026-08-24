@@ -10,6 +10,7 @@
 }
 
 * { box-sizing: border-box; }
+.visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -86,6 +87,19 @@ h2 { margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 500; letter-spac
 .dashboard-intro h1 { font-size: clamp(40px, 6vw, 70px); }
 .dashboard-intro h1 .cursor { color: var(--green); animation: blink 1s step-end infinite; }
 .dashboard-intro > div > p:last-child { max-width: 650px; margin: 22px 0 0; color: #78857d; font-size: 13px; line-height: 1.7; }
+.calendar-dropzone { position: relative; display: grid; min-width: 330px; place-items: center; padding: 24px 30px 20px; border: 1px dashed rgba(117,251,145,.26); border-radius: 11px; background: linear-gradient(145deg, rgba(14,25,18,.72), rgba(7,12,9,.88)); box-shadow: inset 0 0 28px rgba(117,251,145,.025); transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease; }
+.calendar-dropzone::before { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; content: ''; background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(117,251,145,.018) 23px); }
+.calendar-dropzone.is-dragging { border-style: solid; border-color: rgba(117,251,145,.78); background: rgba(22,49,29,.72); box-shadow: inset 0 0 38px rgba(117,251,145,.075), 0 0 36px rgba(117,251,145,.08); }
+.calendar-dropzone.is-dragging::after { position: absolute; inset: 7px; display: grid; place-items: center; border: 1px solid rgba(117,251,145,.2); border-radius: 7px; color: var(--green); content: 'DROP → IMPORT'; background: rgba(6,14,9,.92); font-size: 10px; letter-spacing: .14em; }
+.calendar-dropzone.is-importing .drop-divider { color: var(--green); animation: soft-pulse 1s ease-in-out infinite; }
+@keyframes soft-pulse { 50% { opacity: .45; } }
+.calendar-dropzone .primary-button { position: relative; width: 100%; padding: 14px 18px; }
+.drop-divider { position: relative; margin-top: 15px; color: #758078; font-size: 9px; }
+.drop-formats { position: relative; margin-top: 5px; color: #465149; font-size: 8px; letter-spacing: .08em; }
+.import-file-button { position: relative; margin-top: 11px; border: 0; background: none; color: var(--green); cursor: pointer; font-size: 9px; }
+.import-file-button:disabled { opacity: .45; cursor: wait; }
+.calendar-badges { position: relative; display: flex; gap: 6px; margin-top: 13px; }
+.calendar-badges i { padding: 4px 7px; border: 1px solid rgba(155,255,183,.11); border-radius: 99px; color: #526057; font-size: 7px; font-style: normal; }
 @keyframes blink { 50% { opacity: 0; } }
 .timer-section { padding: 22px 0 62px; }
 .timer-section .section-heading { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
@@ -161,6 +175,7 @@ h2 { margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 500; letter-spac
   .dashboard-intro { align-items: start; flex-direction: column; gap: 28px; padding-bottom: 44px; }
   .dashboard-intro h1 { font-size: 42px; }
   .dashboard-intro .primary-button { width: 100%; }
+  .calendar-dropzone { width: 100%; min-width: 0; }
   .section-hint { display: none; }
   .card-topline { grid-template-columns: auto 1fr; gap: 12px; }
   .card-topline > span:nth-child(2) { display: none; }

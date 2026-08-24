@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ACCENTS, type Accent, type Timer } from './timer-contract';
+import { mergeCalendarEvents, parseCalendarFile } from './calendar-import';
 
 type Language = 'ru' | 'en';
 type User = { displayName: string; email: string } | null;
@@ -15,7 +16,7 @@ const copy = {
     demoOverline: '01 / live countdown', demoTitle: 'Следующий важный момент', synced: 'синхронизировано',
     nearest: 'БЛИЖАЙШЕЕ СОБЫТИЕ', newYear: 'Новый год', quote: 'Мечты становятся планами, когда у них появляется дата.',
     dashboardEyebrow: '// ваш личный временной контур', dashboardTitle: 'Ваши события', dashboardCopy: 'Все важные моменты — в одном месте и на каждом устройстве.',
-    newTimer: '[ + новый таймер ]', active: 'Активные', completed: 'Завершённые',
+    newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
@@ -36,7 +37,7 @@ const copy = {
     demoOverline: '01 / live countdown', demoTitle: 'Your next important moment', synced: 'synchronized',
     nearest: 'NEXT EVENT', newYear: 'New Year', quote: 'Dreams become plans when they have a date.',
     dashboardEyebrow: '// your personal time horizon', dashboardTitle: 'Your events', dashboardCopy: 'Every important moment, in one place and on every device.',
-    newTimer: '[ + new timer ]', active: 'Active', completed: 'Completed',
+    newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
@@ -91,6 +92,7 @@ export default function FocusApp({ user }: { user: User }) {
   const [editor, setEditor] = useState<Timer | 'new' | null>(null);
   const [deleting, setDeleting] = useState<Timer | null>(null);
   const [notice, setNotice] = useState('');
+  const [importing, setImporting] = useState(false);
   const t = copy[language];
 
   useEffect(() => {
@@ -158,6 +160,35 @@ export default function FocusApp({ user }: { user: User }) {
     showNotice(t.deleted);
   }
 
+  async function importCalendarFiles(files: File[]) {
+    if (!files.length || importing) return;
+    setImporting(true);
+    try {
+      const results = await Promise.all(files.map(async (file) => parseCalendarFile(file.name, await file.text())));
+      const parsed = mergeCalendarEvents(results);
+      if (!parsed.events.length) {
+        showNotice(t.importEmpty);
+        return;
+      }
+      const response = await fetch('/api/timers/import', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ timers: parsed.events }),
+      });
+      if (!response.ok) throw new Error('import_failed');
+      const data = await response.json() as { timers: Timer[]; imported: number; skipped: number };
+      setTimers((current) => [...current, ...data.timers]);
+      const skipped = parsed.skipped + data.skipped;
+      showNotice(language === 'ru'
+        ? `Импортировано: ${data.imported}${skipped ? ` · пропущено: ${skipped}` : ''}`
+        : `Imported: ${data.imported}${skipped ? ` · skipped: ${skipped}` : ''}`);
+    } catch {
+      showNotice(t.importError);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <main className={`site-shell ${user ? 'is-dashboard' : ''}`}>
       <Header language={language} toggleLanguage={toggleLanguage} user={user} />
@@ -165,7 +196,7 @@ export default function FocusApp({ user }: { user: User }) {
         <Dashboard
           t={t} language={language} user={user} active={sorted.active} completed={sorted.completed}
           now={now} loading={loading} loadError={loadError} onCreate={() => setEditor('new')}
-          onEdit={setEditor} onDelete={setDeleting}
+          onEdit={setEditor} onDelete={setDeleting} onImport={importCalendarFiles} importing={importing}
         />
       ) : (
         <Landing t={t} language={language} now={now} />
@@ -242,9 +273,10 @@ function Landing({ t, language, now }: { t: typeof copy.ru | typeof copy.en; lan
   );
 }
 
-function Dashboard({ t, language, user, active, completed, now, loading, loadError, onCreate, onEdit, onDelete }: {
+function Dashboard({ t, language, user, active, completed, now, loading, loadError, onCreate, onEdit, onDelete, onImport, importing }: {
   t: typeof copy.ru | typeof copy.en; language: Language; user: NonNullable<User>; active: Timer[]; completed: Timer[]; now: number;
   loading: boolean; loadError: boolean; onCreate: () => void; onEdit: (timer: Timer) => void; onDelete: (timer: Timer) => void;
+  onImport: (files: File[]) => Promise<void>; importing: boolean;
 }) {
   return (
     <div className="dashboard" id="top">
@@ -254,7 +286,7 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
           <h1>{t.dashboardTitle}<span className="cursor" aria-hidden="true">_</span></h1>
           <p>{t.dashboardCopy}</p>
         </div>
-        <button className="primary-button" type="button" onClick={onCreate}>{t.newTimer}</button>
+        <CalendarDropzone t={t} onCreate={onCreate} onImport={onImport} importing={importing} />
       </section>
 
       {loading ? <StatePanel label={t.loading} pulse /> : loadError ? <StatePanel label={t.error} /> : (
@@ -277,6 +309,38 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
         </>
       )}
       <footer className="footer-line"><span>realfamousbae focus</span><span>{user.email} · cloud sync on</span></footer>
+    </div>
+  );
+}
+
+function CalendarDropzone({ t, onCreate, onImport, importing }: {
+  t: typeof copy.ru | typeof copy.en; onCreate: () => void; onImport: (files: File[]) => Promise<void>; importing: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  function acceptFiles(list: FileList | null) {
+    if (!list) return;
+    const files = Array.from(list).filter((file) => /\.(ics|ical|csv)$/i.test(file.name));
+    void onImport(files);
+    if (inputRef.current) inputRef.current.value = '';
+  }
+
+  return (
+    <div
+      className={`calendar-dropzone ${dragging ? 'is-dragging' : ''} ${importing ? 'is-importing' : ''}`}
+      onDragEnter={(event) => { event.preventDefault(); setDragging(true); }}
+      onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'copy'; }}
+      onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); }}
+      onDrop={(event) => { event.preventDefault(); setDragging(false); acceptFiles(event.dataTransfer.files); }}
+      aria-busy={importing}
+    >
+      <button className="primary-button" type="button" onClick={onCreate}>{t.newTimer}</button>
+      <span className="drop-divider">{importing ? t.importing : t.dropTitle}</span>
+      <span className="drop-formats">{t.dropHint}</span>
+      <input ref={inputRef} className="visually-hidden" type="file" accept=".ics,.ical,.csv,text/calendar,text/csv" multiple onChange={(event) => acceptFiles(event.target.files)} />
+      <button className="import-file-button" type="button" disabled={importing} onClick={() => inputRef.current?.click()}>{t.chooseFile}</button>
+      <span className="calendar-badges" aria-label="Supported calendars"><i>Apple</i><i>Google</i><i>Android</i></span>
     </div>
   );
 }
