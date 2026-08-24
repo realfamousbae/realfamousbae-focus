@@ -33,7 +33,7 @@ button { color: inherit; }
 .topbar { position: relative; z-index: 2; display: flex; align-items: center; justify-content: space-between; height: 68px; padding: 0 max(24px, calc((100vw - 1120px) / 2)); border-bottom: 1px solid var(--line); background: rgba(6, 10, 8, 0.78); backdrop-filter: blur(16px); }
 .brand { display: flex; align-items: center; gap: 12px; font-size: 14px; letter-spacing: -0.02em; }
 .brand strong { color: var(--green); font-weight: 600; }
-.brand-mark { color: var(--green); text-shadow: 0 0 16px rgba(117, 251, 145, 0.75); }
+.brand-mark { width: 28px; height: 28px; border-radius: 50%; box-shadow: 0 0 16px rgba(232, 230, 222, 0.14); }
 .top-actions { display: flex; gap: 10px; align-items: center; }
 .language-button, .outline-button, .primary-button { border: 1px solid var(--line); background: transparent; border-radius: 7px; cursor: pointer; font-size: 12px; transition: border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease; }
 .language-button { padding: 9px 12px; color: var(--muted); }

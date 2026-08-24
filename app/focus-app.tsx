@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { ACCENTS, type Accent, type Timer } from './timer-contract';
 import { mergeCalendarEvents, parseCalendarFile } from './calendar-import';
@@ -229,7 +230,7 @@ function Header({ language, toggleLanguage, user }: { language: Language; toggle
   return (
     <header className="topbar">
       <a className="brand" href="#top" aria-label="realfamousbae focus — home">
-        <span className="brand-mark" aria-hidden="true">◉</span>
+        <Image className="brand-mark" src="/brand-mark.png" width={28} height={28} alt="" aria-hidden="true" priority />
         <span>realfamousbae <strong>focus</strong></span>
       </a>
       <nav className="top-actions" aria-label="Primary">

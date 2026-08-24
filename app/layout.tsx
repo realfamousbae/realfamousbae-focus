@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://realfamousbae-focus.multihead-la-3424.chatgpt.site'),
   title: 'realfamousbae focus — countdowns that matter',
   description: 'Живые таймеры до важных событий. Синхронизация через ChatGPT.',
+  icons: {
+    icon: [{ url: '/brand-mark.png', type: 'image/png' }],
+    apple: [{ url: '/apple-touch-icon.png', type: 'image/png' }],
+  },
   openGraph: {
     title: 'realfamousbae focus',
     description: 'Countdowns that matter — beautiful live timers, synced through ChatGPT.',

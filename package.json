@@ -1,7 +1,17 @@
 {
   "name": "realfamousbae-focus",
   "version": "0.1.0",
+  "description": "Private, cloud-synced countdowns for the moments that matter.",
   "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/realfamousbae/realfamousbae-focus.git"
+  },
+  "bugs": {
+    "url": "https://github.com/realfamousbae/realfamousbae-focus/issues"
+  },
+  "homepage": "https://realfamousbae-focus.multihead-la-3424.chatgpt.site",
   "engines": {
     "node": ">=22.13.0"
   },
