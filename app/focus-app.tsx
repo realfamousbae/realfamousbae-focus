@@ -20,7 +20,7 @@ const copy = {
     newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
     viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл', adaptiveOn: 'умный масштаб: вкл', adaptiveOff: 'умный масштаб: выкл',
-    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', adaptiveShortcutHint: '⌘/Ctrl + Shift + M — умный масштаб', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
     days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд', finished: 'СОБЫТИЕ НАСТУПИЛО',
@@ -43,7 +43,7 @@ const copy = {
     newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
     viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off', adaptiveOn: 'smart scale: on', adaptiveOff: 'smart scale: off',
-    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', adaptiveShortcutHint: '⌘/Ctrl + Shift + M — smart scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
     days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds', finished: 'THE MOMENT HAS ARRIVED',
@@ -316,6 +316,10 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
         event.preventDefault();
         setShowConnections((visible) => !visible);
       }
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'm') {
+        event.preventDefault();
+        setAdaptiveScale((enabled) => !enabled);
+      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -383,7 +387,7 @@ function DashboardControls({ t, showConnections, adaptiveScale, tileScale, onCon
     <span>{t.tileSize}</span>
     <div className="scale-options" aria-label={t.tileSize}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
     <button className={`view-toggle ${showConnections ? 'is-active' : ''}`} type="button" onClick={onConnections} aria-pressed={showConnections} title={t.shortcutHint}>{showConnections ? t.connectionsOn : t.connectionsOff}</button>
-    <button className={`view-toggle ${adaptiveScale ? 'is-active' : ''}`} type="button" onClick={onAdaptive} aria-pressed={adaptiveScale}>{adaptiveScale ? t.adaptiveOn : t.adaptiveOff}</button>
+    <button className={`view-toggle ${adaptiveScale ? 'is-active' : ''}`} type="button" onClick={onAdaptive} aria-pressed={adaptiveScale} title={t.adaptiveShortcutHint}>{adaptiveScale ? t.adaptiveOn : t.adaptiveOff}</button>
   </div>;
 }
 
@@ -404,7 +408,7 @@ function CalendarTimeline({ t, timers }: { t: typeof copy.ru | typeof copy.en; t
 }
 
 function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivElement | null } }) {
-  const [paths, setPaths] = useState<string[]>([]);
+  const [paths, setPaths] = useState<Array<{ d: string; accent: string }>>([]);
   useEffect(() => {
     const update = () => {
       const container = containerRef.current;
@@ -417,7 +421,7 @@ function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivEle
         const x1 = a.left + a.width / 2 - host.left; const y1 = a.bottom - host.top;
         const x2 = b.left + Math.min(40, b.width / 2) - host.left; const y2 = b.top + 12 - host.top;
         const bend = y1 + Math.max(26, (y2 - y1) * .42);
-        return [`M ${x1} ${y1} C ${x1} ${bend}, ${x2} ${bend}, ${x2} ${y2}`];
+        return [{ d: `M ${x1} ${y1} C ${x1} ${bend}, ${x2} ${bend}, ${x2} ${y2}`, accent: getComputedStyle(marker).getPropertyValue('--accent').trim() || '#75fb91' }];
       });
       setPaths(next);
     };
@@ -426,7 +430,7 @@ function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivEle
     window.addEventListener('resize', update); window.addEventListener('scroll', update, { passive: true });
     return () => { observer.disconnect(); window.removeEventListener('resize', update); window.removeEventListener('scroll', update); };
   }, [containerRef]);
-  return <svg className="connection-layer" aria-hidden="true">{paths.map((path, index) => <path key={`${path}-${index}`} d={path} />)}</svg>;
+  return <svg className="connection-layer" aria-hidden="true">{paths.map((path, index) => <path key={`${path.d}-${index}`} d={path.d} style={{ stroke: path.accent, color: path.accent }} />)}</svg>;
 }
 
 function CalendarDropzone({ t, onCreate, onImport, importing }: {
