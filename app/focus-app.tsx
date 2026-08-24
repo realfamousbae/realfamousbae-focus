@@ -20,7 +20,7 @@ const copy = {
     newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
     viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл',
-    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', scaleShortcutHint: '⌘/Ctrl + Shift + 1–4 — масштаб', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', scaleShortcutHint: 'Выберите масштаб карточек', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
     days: 'дней', hours: 'часов', minutes: 'минут', seconds: 'секунд', finished: 'СОБЫТИЕ НАСТУПИЛО',
@@ -43,7 +43,7 @@ const copy = {
     newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
     viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off',
-    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', scaleShortcutHint: '⌘/Ctrl + Shift + 1–4 — scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
+    overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', scaleShortcutHint: 'Choose a card scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L', sizeXL: 'XL',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
     days: 'days', hours: 'hours', minutes: 'minutes', seconds: 'seconds', finished: 'THE MOMENT HAS ARRIVED',
@@ -60,6 +60,19 @@ const copy = {
 const accentColors: Record<Accent, string> = {
   green: '#75fb91', cyan: '#67e8f9', violet: '#c4a7ff', amber: '#f3bd72', coral: '#ff857a',
 };
+
+const TILE_SCALES = [0.58, 0.78, 1, 1.25] as const;
+
+function getScaleMetrics(scale: number) {
+  const digitSize = Math.min(51, Math.max(27, Math.round(51 * scale)));
+  const unitPadding = Math.min(28, Math.max(16, 28 * scale));
+  return {
+    digitSize,
+    titleSize: Math.min(36, Math.max(20, Math.round(36 * scale))),
+    metaHeight: scale <= TILE_SCALES[0] ? 116 : 120,
+    gridHeight: Math.round(digitSize + 19 + unitPadding * 2),
+  };
+}
 
 function splitTime(targetAt: string, now: number) {
   const remaining = Math.max(0, Date.parse(targetAt) - now);
@@ -312,18 +325,26 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
         event.preventDefault();
         setShowConnections((visible) => !visible);
       }
-      const scaleKey = event.key;
-      if ((event.metaKey || event.ctrlKey) && event.shiftKey && ['1', '2', '3', '4'].includes(scaleKey)) {
-        event.preventDefault();
-        setTileScale([0.58, 0.78, 1, 1.25][Number(scaleKey) - 1]);
-      }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  const scaleMetrics = getScaleMetrics(tileScale);
+
   return (
-    <div className={`dashboard ${showConnections ? 'show-connections' : ''}`} id="top" ref={dashboardRef} style={{ '--tile-scale': tileScale } as CSSProperties}>
+    <div
+      className={`dashboard ${showConnections ? 'show-connections' : ''}`}
+      id="top"
+      ref={dashboardRef}
+      style={{
+        '--tile-scale': tileScale,
+        '--timer-digit-size': `${scaleMetrics.digitSize}px`,
+        '--timer-title-size': `${scaleMetrics.titleSize}px`,
+        '--timer-meta-height': `${scaleMetrics.metaHeight}px`,
+        '--timer-grid-height': `${scaleMetrics.gridHeight}px`,
+      } as CSSProperties}
+    >
       <section className="dashboard-intro">
         <div>
           <p className="eyebrow">{t.dashboardEyebrow}</p>
@@ -364,7 +385,7 @@ function DashboardControls({ t, showConnections, tileScale, onConnections, onSca
   t: typeof copy.ru | typeof copy.en; showConnections: boolean; tileScale: number;
   onConnections: () => void; onScale: (scale: number) => void;
 }) {
-  const options = [[0.58, t.sizeSmall], [0.78, t.sizeMedium], [1, t.sizeLarge], [1.25, t.sizeXL]] as const;
+  const options = [[TILE_SCALES[0], t.sizeSmall], [TILE_SCALES[1], t.sizeMedium], [TILE_SCALES[2], t.sizeLarge], [TILE_SCALES[3], t.sizeXL]] as const;
   return <div className="dashboard-controls" aria-label={t.viewLabel}>
     <span>{t.tileSize}</span>
     <div className="scale-options" aria-label={t.tileSize} title={t.scaleShortcutHint}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
@@ -389,7 +410,7 @@ function CalendarTimeline({ t, timers }: { t: typeof copy.ru | typeof copy.en; t
 }
 
 function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivElement | null } }) {
-  const [paths, setPaths] = useState<Array<{ d: string; accent: string }>>([]);
+  const [paths, setPaths] = useState<Array<{ d: string; accent: string; x1: number; y1: number; x2: number; y2: number }>>([]);
   useEffect(() => {
     const update = () => {
       const container = containerRef.current;
@@ -400,9 +421,9 @@ function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivEle
         if (!card) return [];
         const a = marker.getBoundingClientRect(); const b = card.getBoundingClientRect();
         const x1 = a.left + a.width / 2 - host.left; const y1 = a.bottom - host.top;
-        const x2 = b.left + Math.min(40, b.width / 2) - host.left; const y2 = b.top + 12 - host.top;
+        const x2 = b.left + Math.min(40, b.width / 2) - host.left; const y2 = b.top - host.top;
         const bend = y1 + Math.max(26, (y2 - y1) * .42);
-        return [{ d: `M ${x1} ${y1} C ${x1} ${bend}, ${x2} ${bend}, ${x2} ${y2}`, accent: getComputedStyle(marker).getPropertyValue('--accent').trim() || '#75fb91' }];
+        return [{ d: `M ${x1} ${y1} C ${x1} ${bend}, ${x2} ${bend}, ${x2} ${y2}`, accent: getComputedStyle(marker).getPropertyValue('--accent').trim() || '#75fb91', x1, y1, x2, y2 }];
       });
       setPaths(next);
     };
@@ -411,7 +432,17 @@ function ConnectionLayer({ containerRef }: { containerRef: { current: HTMLDivEle
     window.addEventListener('resize', update); window.addEventListener('scroll', update, { passive: true });
     return () => { observer.disconnect(); window.removeEventListener('resize', update); window.removeEventListener('scroll', update); };
   }, [containerRef]);
-  return <svg className="connection-layer" aria-hidden="true">{paths.map((path, index) => <path key={`${path.d}-${index}`} d={path.d} style={{ stroke: path.accent, color: path.accent }} />)}</svg>;
+  return <svg className="connection-layer" aria-hidden="true">
+    <defs>{paths.map((path, index) => <linearGradient key={`gradient-${path.d}-${index}`} id={`connection-gradient-${index}`} gradientUnits="userSpaceOnUse" x1={path.x1} y1={path.y1} x2={path.x2} y2={path.y2}>
+      <stop offset="0" stopColor={path.accent} stopOpacity=".92" />
+      <stop offset=".76" stopColor={path.accent} stopOpacity=".86" />
+      <stop offset="1" stopColor={path.accent} stopOpacity="0" />
+    </linearGradient>)}</defs>
+    {paths.map((path, index) => <g key={`${path.d}-${index}`} style={{ color: path.accent }}>
+      <path className="connection-haze" d={path.d} stroke={`url(#connection-gradient-${index})`} />
+      <path className="connection-stroke" d={path.d} stroke={`url(#connection-gradient-${index})`} />
+    </g>)}
+  </svg>;
 }
 
 function CalendarDropzone({ t, onCreate, onImport, importing }: {
@@ -466,7 +497,8 @@ function TimerCard({ timer, now, language, featured = false, demo = false, onEdi
   const parts = splitTime(timer.targetAt, now);
   const units = [[parts.days, t.days], [parts.hours, t.hours], [parts.minutes, t.minutes], [parts.seconds, t.seconds]];
   const date = new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(timer.targetAt));
-  const style = { '--accent': accentColors[timer.accent] } as CSSProperties;
+  const titleFit = timer.title.length > 40 ? 0.56 : timer.title.length > 30 ? 0.66 : timer.title.length > 22 ? 0.8 : 1;
+  const style = { '--accent': accentColors[timer.accent], '--title-fit': titleFit } as CSSProperties;
   return (
     <article className={`timer-card ${featured ? 'featured' : ''} ${ended ? 'is-completed' : ''}`} data-timer-card={timer.id} style={style}>
       <div className="card-topline">
