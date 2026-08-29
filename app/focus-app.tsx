@@ -17,9 +17,9 @@ const copy = {
     demoOverline: '01 / live countdown', demoTitle: 'Следующий важный момент', synced: 'синхронизировано',
     nearest: 'БЛИЖАЙШЕЕ СОБЫТИЕ', newYear: 'Новый год', quote: 'Мечты становятся планами, когда у них появляется дата.',
     dashboardEyebrow: '// ваш личный временной контур', dashboardTitle: 'Ваши события', dashboardCopy: 'Все важные моменты — в одном месте и на каждом устройстве.',
-    newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет будущих событий.', importError: 'Не удалось прочитать календарь.', active: 'Активные', completed: 'Завершённые',
+    newTimer: '[ + новый таймер ]', dropTitle: 'или перетащите календарь / бэкап', dropHint: '.ics · .ical · Google .csv · focus .json', chooseFile: '[ выбрать файл ]', importing: 'импортируем события…', importEmpty: 'В файле нет подходящих событий.', importError: 'Не удалось прочитать календарь или бэкап.', active: 'Активные', completed: 'Завершённые',
     activeHint: 'от ближайшего к самому позднему', completedHint: 'сохраняются до ручного удаления',
-    viewLabel: 'Вид карточек', tileSize: 'Масштаб', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл',
+    viewLabel: 'Вид карточек', tileSize: 'Масштаб', colorFilter: 'Цвет', allColors: 'Все цвета', connections: 'Связи', connectionsOn: 'линии: вкл', connectionsOff: 'линии: выкл',
     overview: 'Календарная шкала', overviewHint: 'события связаны с таймерами ниже', shortcutHint: '⌘/Ctrl + L — линии', scaleShortcutHint: 'Выберите масштаб карточек', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L',
     emptyTitle: 'Здесь пока тихо.', emptyCopy: 'Создайте первый таймер — и время начнёт двигаться к вашей цели.',
     emptyAction: '[ создать событие ]', loading: 'синхронизируем таймеры…', error: 'Не удалось загрузить таймеры. Попробуйте обновить страницу.',
@@ -40,9 +40,9 @@ const copy = {
     demoOverline: '01 / live countdown', demoTitle: 'Your next important moment', synced: 'synchronized',
     nearest: 'NEXT EVENT', newYear: 'New Year', quote: 'Dreams become plans when they have a date.',
     dashboardEyebrow: '// your personal time horizon', dashboardTitle: 'Your events', dashboardCopy: 'Every important moment, in one place and on every device.',
-    newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar here', dropHint: '.ics · .ical · Google .csv', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No future events were found in this file.', importError: 'Could not read this calendar.', active: 'Active', completed: 'Completed',
+    newTimer: '[ + new timer ]', dropTitle: 'or drop a calendar / backup here', dropHint: '.ics · .ical · Google .csv · focus .json', chooseFile: '[ choose a file ]', importing: 'importing events…', importEmpty: 'No suitable events were found in this file.', importError: 'Could not read this calendar or backup.', active: 'Active', completed: 'Completed',
     activeHint: 'nearest first', completedHint: 'kept until you remove them',
-    viewLabel: 'Card view', tileSize: 'Scale', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off',
+    viewLabel: 'Card view', tileSize: 'Scale', colorFilter: 'Color', allColors: 'All colors', connections: 'Connections', connectionsOn: 'lines: on', connectionsOff: 'lines: off',
     overview: 'Calendar timeline', overviewHint: 'events connect to the timers below', shortcutHint: '⌘/Ctrl + L — lines', scaleShortcutHint: 'Choose a card scale', sizeSmall: 'S', sizeMedium: 'M', sizeLarge: 'L',
     emptyTitle: 'Quiet in here.', emptyCopy: 'Create your first timer and watch time start moving toward your goal.',
     emptyAction: '[ create an event ]', loading: 'synchronizing timers…', error: 'Could not load your timers. Try refreshing the page.',
@@ -191,7 +191,7 @@ export default function FocusApp({ user }: { user: User }) {
       const response = await fetch('/api/timers/import', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ timers: parsed.events }),
+        body: JSON.stringify({ timers: parsed.events, restore: files.some((file) => file.name.toLowerCase().endsWith('.json')) }),
       });
       if (!response.ok) throw new Error('import_failed');
       const data = await response.json() as { timers: Timer[]; imported: number; skipped: number };
@@ -299,16 +299,18 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
   const dashboardRef = useRef<HTMLDivElement>(null);
   const [showConnections, setShowConnections] = useState(false);
   const [tileScale, setTileScale] = useState<number>(TILE_SCALES[1]);
+  const [accentFilter, setAccentFilter] = useState<Accent | null>(null);
   const [preferencesReady, setPreferencesReady] = useState(false);
 
   useEffect(() => {
     const saved = window.localStorage.getItem('focus-dashboard-view');
     const id = window.setTimeout(() => {
       if (saved) try {
-        const value = JSON.parse(saved) as { connections?: boolean; tileScale?: number };
+        const value = JSON.parse(saved) as { connections?: boolean; tileScale?: number; accentFilter?: string | null };
         setShowConnections(Boolean(value.connections));
         if (value.tileScale === 1) setTileScale(TILE_SCALES[1]);
         else if (typeof value.tileScale === 'number' && TILE_SCALES.some((scale) => scale === value.tileScale)) setTileScale(value.tileScale);
+        if (typeof value.accentFilter === 'string' && ACCENTS.includes(value.accentFilter as Accent)) setAccentFilter(value.accentFilter as Accent);
       } catch { /* Ignore malformed local preferences. */ }
       setPreferencesReady(true);
     }, 0);
@@ -317,8 +319,8 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
 
   useEffect(() => {
     if (!preferencesReady) return;
-    window.localStorage.setItem('focus-dashboard-view', JSON.stringify({ connections: showConnections, tileScale }));
-  }, [showConnections, tileScale, preferencesReady]);
+    window.localStorage.setItem('focus-dashboard-view', JSON.stringify({ connections: showConnections, tileScale, accentFilter }));
+  }, [showConnections, tileScale, accentFilter, preferencesReady]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -332,6 +334,8 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
   }, []);
 
   const scaleMetrics = getScaleMetrics(tileScale);
+  const visibleActive = accentFilter ? active.filter((timer) => timer.accent === accentFilter) : active;
+  const visibleCompleted = accentFilter ? completed.filter((timer) => timer.accent === accentFilter) : completed;
 
   return (
     <div
@@ -357,10 +361,10 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
 
       {loading ? <StatePanel label={t.loading} pulse /> : loadError ? <StatePanel label={t.error} /> : (
         <>
-          <DashboardControls t={t} showConnections={showConnections} tileScale={tileScale} onConnections={() => setShowConnections((value) => !value)} onScale={setTileScale} />
-          {active.length > 0 && <CalendarTimeline t={t} timers={active} />}
-          <div><TimerSection title={t.active} hint={t.activeHint} count={active.length}>
-              {active.length ? active.map((timer, index) => (
+          <DashboardControls t={t} showConnections={showConnections} tileScale={tileScale} accentFilter={accentFilter} onConnections={() => setShowConnections((value) => !value)} onScale={setTileScale} onAccentFilter={(accent) => setAccentFilter((current) => current === accent ? null : accent)} />
+          {visibleActive.length > 0 && <CalendarTimeline t={t} timers={visibleActive} />}
+          <div><TimerSection title={t.active} hint={t.activeHint} count={visibleActive.length}>
+              {visibleActive.length ? visibleActive.map((timer, index) => (
                 <TimerCard key={timer.id} timer={timer} now={now} language={language} featured={index === 0} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />
               )) : (
                 <div className="empty-state">
@@ -369,12 +373,12 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
                 </div>
               )}
             </TimerSection></div>
-          {completed.length > 0 && (
-            <TimerSection title={t.completed} hint={t.completedHint} count={completed.length} completed>
-              {completed.map((timer) => <TimerCard key={timer.id} timer={timer} now={now} language={language} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />)}
+          {visibleCompleted.length > 0 && (
+            <TimerSection title={t.completed} hint={t.completedHint} count={visibleCompleted.length} completed>
+              {visibleCompleted.map((timer) => <TimerCard key={timer.id} timer={timer} now={now} language={language} onEdit={() => onEdit(timer)} onDelete={() => onDelete(timer)} />)}
             </TimerSection>
           )}
-          {showConnections && active.length > 0 && <ConnectionLayer containerRef={dashboardRef} />}
+          {showConnections && visibleActive.length > 0 && <ConnectionLayer containerRef={dashboardRef} />}
         </>
       )}
       <footer className="footer-line"><span>realfamousbae focus</span><span>{user.email} · cloud sync on</span></footer>
@@ -382,14 +386,18 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
   );
 }
 
-function DashboardControls({ t, showConnections, tileScale, onConnections, onScale }: {
-  t: typeof copy.ru | typeof copy.en; showConnections: boolean; tileScale: number;
-  onConnections: () => void; onScale: (scale: number) => void;
+function DashboardControls({ t, showConnections, tileScale, accentFilter, onConnections, onScale, onAccentFilter }: {
+  t: typeof copy.ru | typeof copy.en; showConnections: boolean; tileScale: number; accentFilter: Accent | null;
+  onConnections: () => void; onScale: (scale: number) => void; onAccentFilter: (accent: Accent) => void;
 }) {
   const options = [[TILE_SCALES[0], t.sizeSmall], [TILE_SCALES[1], t.sizeMedium], [TILE_SCALES[2], t.sizeLarge]] as const;
   return <div className="dashboard-controls" aria-label={t.viewLabel}>
     <span>{t.tileSize}</span>
     <div className="scale-options" aria-label={t.tileSize} title={t.scaleShortcutHint}>{options.map(([value, label]) => <button key={label} type="button" className={tileScale === value ? 'selected' : ''} onClick={() => onScale(value)} aria-pressed={tileScale === value}>{label}</button>)}</div>
+    <span className="color-filter-label">{t.colorFilter}</span>
+    <div className="color-filter-options" aria-label={t.colorFilter} title={accentFilter ? `${t.colorFilter}: ${accentFilter}` : t.allColors}>
+      {ACCENTS.map((accent) => <button key={accent} type="button" className={accentFilter === accent ? 'selected' : ''} style={{ '--swatch': accentColors[accent] } as CSSProperties} onClick={() => onAccentFilter(accent)} aria-label={accent} aria-pressed={accentFilter === accent}><i /></button>)}
+    </div>
     <button className={`view-toggle ${showConnections ? 'is-active' : ''}`} type="button" onClick={onConnections} aria-pressed={showConnections} title={t.shortcutHint}>{showConnections ? t.connectionsOn : t.connectionsOff}</button>
   </div>;
 }
@@ -454,7 +462,7 @@ function CalendarDropzone({ t, onCreate, onImport, importing }: {
 
   function acceptFiles(list: FileList | null) {
     if (!list) return;
-    const files = Array.from(list).filter((file) => /\.(ics|ical|csv)$/i.test(file.name));
+    const files = Array.from(list).filter((file) => /\.(ics|ical|csv|json)$/i.test(file.name));
     void onImport(files);
     if (inputRef.current) inputRef.current.value = '';
   }
@@ -471,7 +479,7 @@ function CalendarDropzone({ t, onCreate, onImport, importing }: {
       <button className="primary-button" type="button" onClick={onCreate}>{t.newTimer}</button>
       <span className="drop-divider">{importing ? t.importing : t.dropTitle}</span>
       <span className="drop-formats">{t.dropHint}</span>
-      <input ref={inputRef} className="visually-hidden" type="file" accept=".ics,.ical,.csv,text/calendar,text/csv" multiple onChange={(event) => acceptFiles(event.target.files)} />
+      <input ref={inputRef} className="visually-hidden" type="file" accept=".ics,.ical,.csv,.json,text/calendar,text/csv,application/json" multiple onChange={(event) => acceptFiles(event.target.files)} />
       <button className="import-file-button" type="button" disabled={importing} onClick={() => inputRef.current?.click()}>{t.chooseFile}</button>
       <span className="calendar-badges" aria-label="Supported calendars"><i>Apple</i><i>Google</i><i>Android</i></span>
     </div>

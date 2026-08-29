@@ -17,9 +17,38 @@ const HORIZON_MONTHS = 12;
 
 export function parseCalendarFile(fileName: string, source: string, now = Date.now()): CalendarParseResult {
   const lowerName = fileName.toLowerCase();
+  if (lowerName.endsWith('.json')) return parseFocusExport(source);
   if (lowerName.endsWith('.csv')) return parseGoogleCsv(source, now);
   if (lowerName.endsWith('.ics') || lowerName.endsWith('.ical')) return parseIcs(source, now);
   throw new Error('unsupported_calendar');
+}
+
+export function parseFocusExport(source: string): CalendarParseResult {
+  const value = JSON.parse(source.replace(/^\uFEFF/, '')) as unknown;
+  if (!value || typeof value !== 'object') throw new Error('invalid_focus_export');
+  const tables = (value as Record<string, unknown>).tables;
+  if (!tables || typeof tables !== 'object') throw new Error('invalid_focus_export');
+  const timers = (tables as Record<string, unknown>).timers;
+  if (!timers || typeof timers !== 'object') throw new Error('invalid_focus_export');
+  const rows = (timers as Record<string, unknown>).rows;
+  if (!Array.isArray(rows) || rows.length > MAX_EVENTS) throw new Error('invalid_focus_export');
+
+  const events: CalendarImportEvent[] = [];
+  let skipped = 0;
+  for (const value of rows) {
+    if (!value || typeof value !== 'object') { skipped += 1; continue; }
+    const row = value as Record<string, unknown>;
+    const title = typeof row.title === 'string' ? row.title.trim() : '';
+    const description = typeof row.description === 'string' ? row.description.trim() : '';
+    const accent = typeof row.accent === 'string' ? row.accent : '';
+    const targetAt = typeof row.target_at === 'number' ? row.target_at : NaN;
+    if (!title || title.length > 80 || description.length > 280 || !['green', 'cyan', 'violet', 'amber', 'coral'].includes(accent) || !Number.isFinite(targetAt)) {
+      skipped += 1;
+      continue;
+    }
+    events.push({ title, description: description || null, accent: accent as Accent, targetAt: new Date(targetAt).toISOString() });
+  }
+  return { events, skipped };
 }
 
 export function mergeCalendarEvents(results: CalendarParseResult[]): CalendarParseResult {

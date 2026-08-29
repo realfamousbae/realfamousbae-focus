@@ -32,7 +32,7 @@ export function serializeTimer(row: TimerRow): Timer {
   };
 }
 
-export function parseTimerInput(value: unknown): { data?: TimerInput; error?: string } {
+export function parseTimerInput(value: unknown, options: { allowPast?: boolean } = {}): { data?: TimerInput; error?: string } {
   if (!value || typeof value !== 'object') return { error: 'invalid_body' };
   const body = value as Record<string, unknown>;
   const title = typeof body.title === 'string' ? body.title.trim() : '';
@@ -43,7 +43,7 @@ export function parseTimerInput(value: unknown): { data?: TimerInput; error?: st
   if (!title || title.length > 80) return { error: 'invalid_title' };
   if (description.length > 280) return { error: 'invalid_description' };
   if (!ACCENTS.includes(accent as Accent)) return { error: 'invalid_accent' };
-  if (!Number.isFinite(targetAt) || targetAt <= Date.now()) return { error: 'invalid_target' };
+  if (!Number.isFinite(targetAt) || (!options.allowPast && targetAt <= Date.now())) return { error: 'invalid_target' };
 
   return {
     data: {

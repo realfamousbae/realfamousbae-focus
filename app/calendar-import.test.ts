@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { mergeCalendarEvents, parseCalendarFile } from './calendar-import.ts';
+import { mergeCalendarEvents, parseCalendarFile, parseFocusExport } from './calendar-import.ts';
 
 const now = Date.parse('2026-08-24T00:00:00.000Z');
 
@@ -56,4 +56,18 @@ test('deduplicates identical events merged from several files', () => {
   const result = mergeCalendarEvents([{ events: [event], skipped: 0 }, { events: [event], skipped: 0 }]);
   assert.equal(result.events.length, 1);
   assert.equal(result.skipped, 1);
+});
+
+test('restores focus JSON exports including completed timers and colors', () => {
+  const result = parseFocusExport(JSON.stringify({
+    format_version: 1,
+    tables: { timers: { rows: [
+      { id: 'one', owner_id: 'private', title: 'Completed', description: null, accent: 'coral', target_at: Date.UTC(2024, 0, 1), created_at: 1, updated_at: 1 },
+      { id: 'two', owner_id: 'private', title: 'Future', description: 'Keep me', accent: 'violet', target_at: Date.UTC(2030, 0, 1), created_at: 1, updated_at: 1 },
+    ] } },
+  }));
+  assert.equal(result.events.length, 2);
+  assert.equal(result.events[0].accent, 'coral');
+  assert.equal(result.events[1].description, 'Keep me');
+  assert.equal(result.skipped, 0);
 });

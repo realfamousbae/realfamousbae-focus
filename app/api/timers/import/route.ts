@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return errorResponse('unauthorized', 401);
 
-  const body = await request.json().catch(() => null) as { timers?: unknown[] } | null;
+  const body = await request.json().catch(() => null) as { timers?: unknown[]; restore?: boolean } | null;
   if (!body || !Array.isArray(body.timers) || body.timers.length === 0 || body.timers.length > MAX_IMPORT) {
     return errorResponse('invalid_import', 400);
   }
@@ -17,11 +17,11 @@ export async function POST(request: Request) {
   const valid: TimerInput[] = [];
   let skipped = 0;
   for (const value of body.timers) {
-    const parsed = parseTimerInput(value);
+    const parsed = parseTimerInput(value, { allowPast: body.restore === true });
     if (parsed.data) valid.push(parsed.data);
     else skipped += 1;
   }
-  if (valid.length === 0) return errorResponse('no_future_events', 400);
+  if (valid.length === 0) return errorResponse(body.restore ? 'no_valid_events' : 'no_future_events', 400);
 
   const rows = await importTimers(user.userId, valid);
   skipped += valid.length - rows.length;

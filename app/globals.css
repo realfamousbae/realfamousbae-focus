@@ -138,6 +138,14 @@ h2 { margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 500; letter-spac
 .scale-options button { min-width: 26px; padding: 6px 7px; border-right: 1px solid rgba(155,255,183,.12); }
 .scale-options button:last-child { border-right: 0; }
 .scale-options button.selected, .view-toggle.is-active { background: rgba(117,251,145,.1); color: var(--green); }
+.color-filter-label { margin-left: 8px; }
+.color-filter-options { display: inline-flex; overflow: hidden; border: 1px solid rgba(155,255,183,.12); border-radius: 5px; }
+.color-filter-options button { display: grid; width: 28px; height: 28px; padding: 0; place-items: center; border: 0; border-right: 1px solid rgba(155,255,183,.12); background: transparent; cursor: pointer; }
+.color-filter-options button:last-child { border-right: 0; }
+.color-filter-options button i { width: 9px; height: 9px; border-radius: 50%; background: var(--swatch); box-shadow: 0 0 8px var(--swatch); opacity: .55; transition: opacity 180ms ease, transform 180ms ease; }
+.color-filter-options button:hover i { opacity: .85; }
+.color-filter-options button.selected { background: color-mix(in srgb, var(--swatch) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--swatch) 55%, transparent); }
+.color-filter-options button.selected i { opacity: 1; transform: scale(1.18); }
 .view-toggle { padding: 7px 9px; border: 1px solid rgba(155,255,183,.12); border-radius: 5px; }
 .dashboard-controls .view-toggle:first-of-type { margin-left: auto; }
 .calendar-timeline { position: relative; z-index: 1; margin: 0 0 8px; padding: 18px 20px 16px; border: 1px solid rgba(155,255,183,.14); border-radius: 10px; background: linear-gradient(145deg, rgba(14,25,18,.67), rgba(7,12,9,.82)); }
