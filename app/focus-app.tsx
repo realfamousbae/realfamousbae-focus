@@ -1,7 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from 'react';
+import { TimerNotifications } from './timer-notifications';
+import { fiveHourInput } from './timer-quick-create';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { ACCENTS, type Accent, type Timer } from './timer-contract';
 import { mergeCalendarEvents, parseCalendarFile } from './calendar-import';
 
@@ -27,6 +29,7 @@ const copy = {
     edit: 'редактировать', remove: 'удалить', formCreate: 'Создать таймер', formEdit: 'Редактировать таймер',
     formHint: 'Укажите точный момент — остальное мы посчитаем.', title: 'Название', titlePlaceholder: 'Например, запуск проекта',
     date: 'Дата и время', description: 'Описание', optional: 'необязательно', descriptionPlaceholder: 'Почему этот момент важен?', accent: 'Акцент',
+    fiveHours: '[ 5 часов) ]', fiveHourTitle: 'Сброс 5-часового лимита код-агента',
     cancel: '[ отмена ]', save: '[ сохранить → ]', create: '[ создать → ]', saving: 'сохраняем…',
     deleteTitle: 'Удалить таймер?', deleteCopy: 'Это действие нельзя отменить. Таймер исчезнет со всех ваших устройств.',
     deleteAction: '[ удалить ]', created: 'Таймер создан', updated: 'Изменения сохранены', deleted: 'Таймер удалён', requestError: 'Что-то пошло не так. Попробуйте ещё раз.',
@@ -50,6 +53,7 @@ const copy = {
     edit: 'edit', remove: 'delete', formCreate: 'Create timer', formEdit: 'Edit timer',
     formHint: 'Set the exact moment. We will count the rest.', title: 'Title', titlePlaceholder: 'For example, project launch',
     date: 'Date and time', description: 'Description', optional: 'optional', descriptionPlaceholder: 'Why does this moment matter?', accent: 'Accent',
+    fiveHours: '[ 5 hours) ]', fiveHourTitle: 'Coding agent 5-hour limit reset',
     cancel: '[ cancel ]', save: '[ save → ]', create: '[ create → ]', saving: 'saving…',
     deleteTitle: 'Delete this timer?', deleteCopy: 'This cannot be undone. The timer will disappear from all your devices.',
     deleteAction: '[ delete ]', created: 'Timer created', updated: 'Changes saved', deleted: 'Timer deleted', requestError: 'Something went wrong. Please try again.',
@@ -84,9 +88,15 @@ function splitTime(targetAt: string, now: number) {
   };
 }
 
-function nextNewYearIso() {
-  const date = new Date();
-  return new Date(date.getFullYear() + 1, 0, 1).toISOString();
+const subscribeToHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
+
+function nextNewYearIso(now: number, local: boolean) {
+  const date = new Date(now);
+  return (local
+    ? new Date(date.getFullYear() + 1, 0, 1)
+    : new Date(Date.UTC(date.getUTCFullYear() + 1, 0, 1))).toISOString();
 }
 
 function toLocalInput(iso: string) {
@@ -101,9 +111,9 @@ function minLocalInput() {
   return local.toISOString().slice(0, 16);
 }
 
-export default function FocusApp({ user }: { user: User }) {
+export default function FocusApp({ user, initialNow }: { user: User; initialNow: number }) {
   const [language, setLanguage] = useState<Language>('ru');
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(initialNow);
   const [timers, setTimers] = useState<Timer[]>([]);
   const [loading, setLoading] = useState(Boolean(user));
   const [loadError, setLoadError] = useState(false);
@@ -121,8 +131,15 @@ export default function FocusApp({ user }: { user: User }) {
   }, []);
 
   useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
+    const refresh = () => setNow(Date.now());
+    const id = window.setInterval(refresh, 1000);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(id);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, []);
 
   useEffect(() => {
@@ -212,6 +229,7 @@ export default function FocusApp({ user }: { user: User }) {
       <Header language={language} toggleLanguage={toggleLanguage} user={user} />
       {user ? (
         <Dashboard
+          notificationSettings={<TimerNotifications key={user.email} userKey={user.email} language={language} timers={timers} now={now} ready={!loading && !loadError} />}
           t={t} language={language} user={user} active={sorted.active} completed={sorted.completed}
           now={now} loading={loading} loadError={loadError} onCreate={() => setEditor('new')}
           onEdit={setEditor} onDelete={setDeleting} onImport={importCalendarFiles} importing={importing}
@@ -266,8 +284,9 @@ function Header({ language, toggleLanguage, user }: { language: Language; toggle
 }
 
 function Landing({ t, language, now }: { t: typeof copy.ru | typeof copy.en; language: Language; now: number }) {
+  const hydrated = useSyncExternalStore(subscribeToHydration, clientSnapshot, serverSnapshot);
   const demoTimer: Timer = {
-    id: 'demo', title: t.newYear, description: t.quote, accent: 'green', targetAt: nextNewYearIso(), createdAt: '', updatedAt: '',
+    id: 'demo', title: t.newYear, description: t.quote, accent: 'green', targetAt: nextNewYearIso(now, hydrated), createdAt: '', updatedAt: '',
   };
   return (
     <>
@@ -285,16 +304,16 @@ function Landing({ t, language, now }: { t: typeof copy.ru | typeof copy.en; lan
           <div><p className="eyebrow">{t.demoOverline}</p><h2 id="demo-title">{t.demoTitle}</h2></div>
           <span className="status-pill"><i /> {t.synced}</span>
         </div>
-        <TimerCard timer={demoTimer} now={now} language={language} featured demo />
+        <TimerCard timer={demoTimer} now={now} language={language} timeZone={hydrated ? undefined : 'UTC'} featured demo />
       </section>
     </>
   );
 }
 
-function Dashboard({ t, language, user, active, completed, now, loading, loadError, onCreate, onEdit, onDelete, onImport, importing }: {
+function Dashboard({ notificationSettings, t, language, user, active, completed, now, loading, loadError, onCreate, onEdit, onDelete, onImport, importing }: {
   t: typeof copy.ru | typeof copy.en; language: Language; user: NonNullable<User>; active: Timer[]; completed: Timer[]; now: number;
   loading: boolean; loadError: boolean; onCreate: () => void; onEdit: (timer: Timer) => void; onDelete: (timer: Timer) => void;
-  onImport: (files: File[]) => Promise<void>; importing: boolean;
+  onImport: (files: File[]) => Promise<void>; importing: boolean; notificationSettings: ReactNode;
 }) {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const [showConnections, setShowConnections] = useState(false);
@@ -354,7 +373,8 @@ function Dashboard({ t, language, user, active, completed, now, loading, loadErr
         <div>
           <p className="eyebrow">{t.dashboardEyebrow}</p>
           <h1>{t.dashboardTitle}<span className="cursor" aria-hidden="true">_</span></h1>
-          <p>{t.dashboardCopy}</p>
+          <p className="dashboard-copy">{t.dashboardCopy}</p>
+          {notificationSettings}
         </div>
         <CalendarDropzone t={t} onCreate={onCreate} onImport={onImport} importing={importing} />
       </section>
@@ -498,14 +518,14 @@ function TimerSection({ title, hint, count, completed = false, children }: { tit
   );
 }
 
-function TimerCard({ timer, now, language, featured = false, demo = false, onEdit, onDelete }: {
-  timer: Timer; now: number; language: Language; featured?: boolean; demo?: boolean; onEdit?: () => void; onDelete?: () => void;
+function TimerCard({ timer, now, language, timeZone, featured = false, demo = false, onEdit, onDelete }: {
+  timer: Timer; now: number; language: Language; timeZone?: string; featured?: boolean; demo?: boolean; onEdit?: () => void; onDelete?: () => void;
 }) {
   const t = copy[language];
   const ended = Date.parse(timer.targetAt) <= now;
   const parts = splitTime(timer.targetAt, now);
   const units = [[parts.days, t.days], [parts.hours, t.hours], [parts.minutes, t.minutes], [parts.seconds, t.seconds]];
-  const date = new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(timer.targetAt));
+  const date = new Intl.DateTimeFormat(language === 'ru' ? 'ru-RU' : 'en-US', { timeZone, day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(timer.targetAt));
   const titleFit = timer.title.length > 40 ? 0.56 : timer.title.length > 30 ? 0.66 : timer.title.length > 22 ? 0.8 : 1;
   const style = { '--accent': accentColors[timer.accent], '--title-fit': titleFit } as CSSProperties;
   return (
@@ -539,6 +559,7 @@ function TimerEditor({ timer, t, onClose, onSave }: {
   const [accent, setAccent] = useState<Accent>(timer?.accent ?? 'green');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) { if (event.key === 'Escape') onClose(); }
@@ -546,20 +567,29 @@ function TimerEditor({ timer, t, onClose, onSave }: {
     return () => window.removeEventListener('keydown', closeOnEscape);
   }, [onClose]);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const cleanTitle = title.trim();
-    const cleanDescription = description.trim();
-    const date = new Date(targetAt);
-    if (!cleanTitle || cleanTitle.length > 80) return setError(t.titleError);
-    if (cleanDescription.length > 280) return setError(t.descError);
-    if (!targetAt || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) return setError(t.dateError);
+  async function persist(quick: boolean) {
+    if (savingRef.current) return;
+    const input = quick
+      ? fiveHourInput({ title, description, accent }, t.fiveHourTitle, Date.now())
+      : { title: title.trim(), description: description.trim() || null, accent, targetAt };
+    const date = new Date(input.targetAt);
+    if (!input.title || input.title.length > 80) return setError(t.titleError);
+    if ((input.description?.length ?? 0) > 280) return setError(t.descError);
+    if (!input.targetAt || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) return setError(t.dateError);
+    savingRef.current = true;
     setSaving(true); setError('');
     try {
-      await onSave({ title: cleanTitle, description: cleanDescription || null, accent, targetAt: date.toISOString() }, timer);
+      await onSave({ ...input, targetAt: date.toISOString() }, timer);
     } catch {
-      setError(t.requestError); setSaving(false);
+      setError(t.requestError);
+      savingRef.current = false;
+      setSaving(false);
     }
+  }
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    void persist(false);
   }
 
   return (
@@ -573,7 +603,7 @@ function TimerEditor({ timer, t, onClose, onSave }: {
           <label><span>{t.description} <small>({t.optional})</small></span><textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t.descriptionPlaceholder} maxLength={280} rows={3} /></label>
           <fieldset><legend>{t.accent}</legend><div className="accent-options">{ACCENTS.map((value) => <button key={value} type="button" className={accent === value ? 'selected' : ''} style={{ '--swatch': accentColors[value] } as CSSProperties} onClick={() => setAccent(value)} aria-label={value}><i /></button>)}</div></fieldset>
           {error && <p className="form-error" role="alert">! {error}</p>}
-          <div className="modal-actions"><button className="outline-button" type="button" onClick={onClose}>{t.cancel}</button><button className="primary-button" type="submit" disabled={saving}>{saving ? t.saving : timer ? t.save : t.create}</button></div>
+          <div className="modal-actions"><button className="outline-button" type="button" onClick={onClose}>{t.cancel}</button>{!timer && <button className="outline-button" type="button" disabled={saving} onClick={() => void persist(true)}>{t.fiveHours}</button>}<button className="primary-button" type="submit" disabled={saving}>{saving ? t.saving : timer ? t.save : t.create}</button></div>
         </form>
       </section>
     </div>

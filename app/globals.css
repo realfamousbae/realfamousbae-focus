@@ -87,7 +87,7 @@ h2 { margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 500; letter-spac
 .dashboard-intro .eyebrow { margin-bottom: 17px; }
 .dashboard-intro h1 { font-size: clamp(40px, 6vw, 70px); }
 .dashboard-intro h1 .cursor { color: var(--green); animation: blink 1s step-end infinite; }
-.dashboard-intro > div > p:last-child { max-width: 650px; margin: 22px 0 0; color: #78857d; font-size: 13px; line-height: 1.7; }
+.dashboard-intro .dashboard-copy { max-width: 650px; margin: 22px 0 0; color: #78857d; font-size: 13px; line-height: 1.7; }
 .calendar-dropzone { position: relative; display: grid; min-width: 330px; place-items: center; padding: 24px 30px 20px; border: 1px dashed rgba(117,251,145,.26); border-radius: 11px; background: linear-gradient(145deg, rgba(14,25,18,.72), rgba(7,12,9,.88)); box-shadow: inset 0 0 28px rgba(117,251,145,.025); transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease; }
 .calendar-dropzone::before { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; content: ''; background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(117,251,145,.018) 23px); }
 .calendar-dropzone.is-dragging { border-style: solid; border-color: rgba(117,251,145,.78); background: rgba(22,49,29,.72); box-shadow: inset 0 0 38px rgba(117,251,145,.075), 0 0 36px rgba(117,251,145,.08); }
@@ -193,6 +193,20 @@ h2 { margin: 0; font-size: clamp(18px, 2vw, 24px); font-weight: 500; letter-spac
 .accent-options button { display: grid; place-items: center; width: 34px; height: 30px; border: 1px solid rgba(255,255,255,.08); border-radius: 5px; background: #060b08; cursor: pointer; }
 .accent-options button i { width: 10px; height: 10px; border-radius: 50%; background: var(--swatch); box-shadow: 0 0 9px var(--swatch); }
 .accent-options button.selected { border-color: var(--swatch); box-shadow: inset 0 0 12px color-mix(in srgb, var(--swatch) 10%, transparent); }
+.notification-settings { position: relative; width: fit-content; max-width: 100%; margin-top: 22px; font-size: 11px; }
+.notification-status { display: flex; align-items: center; gap: 9px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px; background: rgba(117, 251, 145, 0.025); color: var(--muted); }
+.notification-status > svg { flex: 0 0 auto; }
+.notification-settings.is-enabled .notification-status > svg { color: var(--green); }
+.notification-status > button { padding: 0; border: 0; background: none; color: var(--green); font: inherit; text-align: left; cursor: pointer; }
+.notification-status > button:hover { color: var(--text); }
+.notification-help { margin-left: 5px; flex: 0 0 auto; }
+.notification-help summary { display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); cursor: pointer; font-size: 10px; list-style: none; }
+.notification-help summary::-webkit-details-marker { display: none; }
+.notification-help summary:hover, .notification-help[open] summary { color: var(--green); border-color: var(--green); }
+.notification-help-content { position: absolute; top: calc(100% + 8px); left: 0; z-index: 8; width: min(340px, calc(100vw - 48px)); padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: #0a130d; box-shadow: 0 12px 30px #0006; }
+.dashboard-intro .notification-help-content p { margin: 0; font-size: 11px; line-height: 1.7; color: var(--muted); }
+.dashboard-intro .notification-help-content p + p { margin-top: 8px; }
+.dashboard-intro .notification-error { margin: 8px 0 0; max-width: 340px; font-size: 11px; color: #ff857a; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 4px; }
 .modal-actions button { padding: 11px 15px; }
 .primary-button:disabled, .danger-button:disabled { opacity: .5; cursor: wait; }
