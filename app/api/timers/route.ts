@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createTimer, listTimers } from '../../../db/timers';
-import { getChatGPTUser } from '../../chatgpt-auth';
+import { getSessionUser } from '../../auth';
 import { parseTimerInput, serializeTimer } from '../../timer-contract';
 
 export async function GET() {
-  const user = await getChatGPTUser();
+  const user = await getSessionUser();
   if (!user) return errorResponse('unauthorized', 401);
 
   const rows = await listTimers(user.userId);
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const user = await getChatGPTUser();
+  const user = await getSessionUser();
   if (!user) return errorResponse('unauthorized', 401);
 
   const parsed = parseTimerInput(await request.json().catch(() => null));

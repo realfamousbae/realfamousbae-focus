@@ -1,5 +1,4 @@
-import { env } from 'cloudflare:workers';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import { getDb } from './index';
 import { timers, type TimerRow } from './schema';
 import type { TimerInput } from '../app/timer-contract';
@@ -8,23 +7,29 @@ let schemaReady: Promise<void> | null = null;
 
 export function ensureTimerSchema() {
   schemaReady ??= (async () => {
-    const d1 = env.DB;
-    await d1.batch([
-      d1.prepare(`CREATE TABLE IF NOT EXISTS timers (
-        id text PRIMARY KEY NOT NULL,
-        owner_id text NOT NULL,
-        title text NOT NULL,
-        description text,
-        accent text DEFAULT 'green' NOT NULL,
-        target_at integer NOT NULL,
-        created_at integer NOT NULL,
-        updated_at integer NOT NULL
-      )`),
-      d1.prepare(`CREATE INDEX IF NOT EXISTS idx_timers_owner_target
-        ON timers (owner_id, target_at)`),
-      d1.prepare('PRAGMA optimize'),
-    ]);
-  })();
+    const db = getDb();
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS users (
+      id text PRIMARY KEY NOT NULL,
+      username text NOT NULL UNIQUE,
+      password_hash text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )`);
+    await db.execute(sql`CREATE TABLE IF NOT EXISTS timers (
+      id text PRIMARY KEY NOT NULL,
+      owner_id text NOT NULL,
+      title text NOT NULL,
+      description text,
+      accent text DEFAULT 'green' NOT NULL,
+      target_at bigint NOT NULL,
+      created_at bigint NOT NULL,
+      updated_at bigint NOT NULL
+    )`);
+    await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_timers_owner_target
+      ON timers (owner_id, target_at)`);
+  })().catch((error) => {
+    schemaReady = null;
+    throw error;
+  });
   return schemaReady;
 }
 
@@ -55,6 +60,7 @@ export async function importTimers(ownerId: string, values: TimerInput[]) {
     });
   }
 
+  await ensureTimerSchema();
   for (let index = 0; index < rows.length; index += 50) {
     await getDb().insert(timers).values(rows.slice(index, index + 50));
   }

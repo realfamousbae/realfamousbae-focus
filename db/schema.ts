@@ -1,6 +1,13 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { bigint, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 
-export const timers = sqliteTable(
+export const users = pgTable('users', {
+  id: text('id').primaryKey(),
+  username: text('username').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const timers = pgTable(
   'timers',
   {
     id: text('id').primaryKey(),
@@ -8,11 +15,12 @@ export const timers = sqliteTable(
     title: text('title').notNull(),
     description: text('description'),
     accent: text('accent').notNull().default('green'),
-    targetAt: integer('target_at').notNull(),
-    createdAt: integer('created_at').notNull(),
-    updatedAt: integer('updated_at').notNull(),
+    targetAt: bigint('target_at', { mode: 'number' }).notNull(),
+    createdAt: bigint('created_at', { mode: 'number' }).notNull(),
+    updatedAt: bigint('updated_at', { mode: 'number' }).notNull(),
   },
   (table) => [index('idx_timers_owner_target').on(table.ownerId, table.targetAt)],
 );
 
 export type TimerRow = typeof timers.$inferSelect;
+export type UserRow = typeof users.$inferSelect;

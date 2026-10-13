@@ -8,9 +8,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://realfamousbae-focus.multihead-la-3424.chatgpt.site'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: 'realfamousbae focus — countdowns that matter',
-  description: 'Живые таймеры до важных событий. Синхронизация через ChatGPT.',
+  description: 'Живые таймеры до важных событий. Синхронизация между устройствами.',
   icons: {
     icon: [{ url: '/icon.png', type: 'image/png', sizes: '512x512' }],
     shortcut: [{ url: '/icon.png', type: 'image/png' }],
@@ -18,15 +18,15 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'realfamousbae focus',
-    description: 'Countdowns that matter — beautiful live timers, synced through ChatGPT.',
+    description: 'Countdowns that matter — beautiful live timers, synced across your devices.',
     type: 'website',
-    url: 'https://realfamousbae-focus.multihead-la-3424.chatgpt.site',
+    url: '/',
     images: [{ url: '/og.png', width: 1731, height: 909, alt: 'realfamousbae focus — countdowns that matter' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'realfamousbae focus',
-    description: 'Countdowns that matter — beautiful live timers, synced through ChatGPT.',
+    description: 'Countdowns that matter — beautiful live timers, synced across your devices.',
     images: ['/og.png'],
   },
 };

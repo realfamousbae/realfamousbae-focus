@@ -8,14 +8,14 @@ import { ACCENTS, type Accent, type Timer } from './timer-contract';
 import { mergeCalendarEvents, parseCalendarFile } from './calendar-import';
 
 type Language = 'ru' | 'en';
-type User = { displayName: string; email: string } | null;
+type User = { displayName: string; username: string } | null;
 
 const copy = {
   ru: {
     navDemo: 'демо', navTimers: 'таймеры', signIn: 'войти', signOut: 'выйти',
     eyebrow: '// время имеет значение', heroA: 'До важного', heroB: 'осталось немного.',
     heroCopy: 'Красивые живые таймеры для событий, которые не хочется упустить. Сохраняются в облаке и всегда идут рядом с вами.',
-    createFirst: '[ создать первый таймер → ]', private: 'вход через ChatGPT · приватно',
+    createFirst: '[ создать первый таймер → ]', private: 'вход по логину и паролю · приватно',
     demoOverline: '01 / live countdown', demoTitle: 'Следующий важный момент', synced: 'синхронизировано',
     nearest: 'БЛИЖАЙШЕЕ СОБЫТИЕ', newYear: 'Новый год', quote: 'Мечты становятся планами, когда у них появляется дата.',
     dashboardEyebrow: '// ваш личный временной контур', dashboardTitle: 'Ваши события', dashboardCopy: 'Все важные моменты — в одном месте и на каждом устройстве.',
@@ -39,7 +39,7 @@ const copy = {
     navDemo: 'demo', navTimers: 'timers', signIn: 'sign in', signOut: 'sign out',
     eyebrow: '// time is what matters', heroA: 'The important things', heroB: 'are getting closer.',
     heroCopy: 'Beautiful live countdowns for the moments you do not want to miss. Saved to the cloud and always moving with you.',
-    createFirst: '[ create your first timer → ]', private: 'ChatGPT sign-in · private',
+    createFirst: '[ create your first timer → ]', private: 'login & password · private',
     demoOverline: '01 / live countdown', demoTitle: 'Your next important moment', synced: 'synchronized',
     nearest: 'NEXT EVENT', newYear: 'New Year', quote: 'Dreams become plans when they have a date.',
     dashboardEyebrow: '// your personal time horizon', dashboardTitle: 'Your events', dashboardCopy: 'Every important moment, in one place and on every device.',
@@ -229,7 +229,7 @@ export default function FocusApp({ user, initialNow }: { user: User; initialNow:
       <Header language={language} toggleLanguage={toggleLanguage} user={user} />
       {user ? (
         <Dashboard
-          notificationSettings={<TimerNotifications key={user.email} userKey={user.email} language={language} timers={timers} now={now} ready={!loading && !loadError} />}
+          notificationSettings={<TimerNotifications key={user.username} userKey={user.username} language={language} timers={timers} now={now} ready={!loading && !loadError} />}
           t={t} language={language} user={user} active={sorted.active} completed={sorted.completed}
           now={now} loading={loading} loadError={loadError} onCreate={() => setEditor('new')}
           onEdit={setEditor} onDelete={setDeleting} onImport={importCalendarFiles} importing={importing}
@@ -262,6 +262,10 @@ export default function FocusApp({ user, initialNow }: { user: User; initialNow:
 
 function Header({ language, toggleLanguage, user }: { language: Language; toggleLanguage: () => void; user: User }) {
   const t = copy[language];
+  async function signOut() {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+    window.location.href = '/';
+  }
   return (
     <header className="topbar">
       <a className="brand" href="#top" aria-label="realfamousbae focus — home">
@@ -272,11 +276,11 @@ function Header({ language, toggleLanguage, user }: { language: Language; toggle
         <button className="language-button" type="button" onClick={toggleLanguage} aria-label="Switch language">{language === 'ru' ? 'RU / EN' : 'EN / RU'}</button>
         {user ? (
           <>
-            <span className="account-chip" title={user.email}><i />{user.displayName}</span>
-            <a className="outline-button" href="/signout-with-chatgpt?return_to=/">[ {t.signOut} ]</a>
+            <span className="account-chip" title={user.username}><i />{user.displayName}</span>
+            <button className="outline-button" type="button" onClick={signOut}>[ {t.signOut} ]</button>
           </>
         ) : (
-          <a className="outline-button" href="/signin-with-chatgpt?return_to=/">[ {t.signIn} ]</a>
+          <a className="outline-button" href="/login">[ {t.signIn} ]</a>
         )}
       </nav>
     </header>
@@ -295,7 +299,7 @@ function Landing({ t, language, now }: { t: typeof copy.ru | typeof copy.en; lan
         <h1>{t.heroA}<br /><span>{t.heroB}</span></h1>
         <p className="hero-copy">{t.heroCopy}</p>
         <div className="hero-actions">
-          <a className="primary-button" href="/signin-with-chatgpt?return_to=/">{t.createFirst}</a>
+          <a className="primary-button" href="/login">{t.createFirst}</a>
           <span className="privacy-note"><i /> {t.private}</span>
         </div>
       </section>
@@ -401,7 +405,7 @@ function Dashboard({ notificationSettings, t, language, user, active, completed,
           {showConnections && visibleActive.length > 0 && <ConnectionLayer containerRef={dashboardRef} />}
         </>
       )}
-      <footer className="footer-line"><span>realfamousbae focus</span><span>{user.email} · cloud sync on</span></footer>
+      <footer className="footer-line"><span>realfamousbae focus</span><span>{user.username} · cloud sync on</span></footer>
     </div>
   );
 }

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { deleteTimer, updateTimer } from '../../../../db/timers';
-import { getChatGPTUser } from '../../../chatgpt-auth';
+import { getSessionUser } from '../../../auth';
 import { parseTimerInput, serializeTimer } from '../../../timer-contract';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const user = await getChatGPTUser();
+  const user = await getSessionUser();
   if (!user) return errorResponse('unauthorized', 401);
 
   const parsed = parseTimerInput(await request.json().catch(() => null));
@@ -25,7 +25,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
-  const user = await getChatGPTUser();
+  const user = await getSessionUser();
   if (!user) return errorResponse('unauthorized', 401);
 
   const { id } = await context.params;
