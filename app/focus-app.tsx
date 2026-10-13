@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { TimerNotifications } from './timer-notifications';
 import { fiveHourInput } from './timer-quick-create';
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type FormEvent, type ReactNode } from 'react';
@@ -12,7 +13,7 @@ type User = { displayName: string; username: string } | null;
 
 const copy = {
   ru: {
-    navDemo: 'демо', navTimers: 'таймеры', signIn: 'войти', signOut: 'выйти',
+    navDemo: 'демо', navTimers: 'таймеры', signIn: 'войти', signOut: 'выйти', password: 'пароль',
     eyebrow: '// время имеет значение', heroA: 'До важного', heroB: 'осталось немного.',
     heroCopy: 'Красивые живые таймеры для событий, которые не хочется упустить. Сохраняются в облаке и всегда идут рядом с вами.',
     createFirst: '[ создать первый таймер → ]', private: 'вход по логину и паролю · приватно',
@@ -36,7 +37,7 @@ const copy = {
     titleError: 'Введите название до 80 символов.', dateError: 'Выберите будущую дату и время.', descError: 'Описание должно быть короче 280 символов.',
   },
   en: {
-    navDemo: 'demo', navTimers: 'timers', signIn: 'sign in', signOut: 'sign out',
+    navDemo: 'demo', navTimers: 'timers', signIn: 'sign in', signOut: 'sign out', password: 'password',
     eyebrow: '// time is what matters', heroA: 'The important things', heroB: 'are getting closer.',
     heroCopy: 'Beautiful live countdowns for the moments you do not want to miss. Saved to the cloud and always moving with you.',
     createFirst: '[ create your first timer → ]', private: 'login & password · private',
@@ -277,6 +278,7 @@ function Header({ language, toggleLanguage, user }: { language: Language; toggle
         {user ? (
           <>
             <span className="account-chip" title={user.username}><i />{user.displayName}</span>
+            <Link className="outline-button" href="/account">[ {t.password} ]</Link>
             <button className="outline-button" type="button" onClick={signOut}>[ {t.signOut} ]</button>
           </>
         ) : (

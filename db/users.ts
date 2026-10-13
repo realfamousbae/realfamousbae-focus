@@ -19,3 +19,14 @@ export async function createUser(username: string, passwordHash: string): Promis
     .returning();
   return rows[0] ?? null;
 }
+
+export async function findUserById(id: string): Promise<UserRow | null> {
+  await ensureTimerSchema();
+  const rows = await getDb().select().from(users).where(eq(users.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updatePasswordHash(id: string, passwordHash: string): Promise<void> {
+  await ensureTimerSchema();
+  await getDb().update(users).set({ passwordHash }).where(eq(users.id, id));
+}
